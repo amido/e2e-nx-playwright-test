@@ -35,4 +35,17 @@ export const baseConfig: PlaywrightTestConfig = {
       ]
     : 'list',
   use: { baseURL },
+  updateSnapshots: 'missing',
+  ignoreSnapshots: !process.env.CI,
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.05,
+      threshold: 0.2,
+      animations: 'disabled',
+    },
+    toMatchSnapshot: {
+      maxDiffPixelRatio: 0.05,
+      threshold: 0.2,
+    },
+  },
 };

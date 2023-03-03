@@ -48,3 +48,5 @@ pipelines:
       depends_on: version:prod
     - task: helm:prod
       depends_on: terraform:prod
+  updatesnapshots:
+    - task: e2e:updatesnapshots
