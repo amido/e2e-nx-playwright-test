@@ -8,7 +8,20 @@
     "default": {
       "runner": "nx/tasks-runners/default",
       "options": {
-        "cacheableOperations": ["build", "lint", "test", "e2e"]
+        "cacheableOperations": [
+          "build",
+          "lint",
+          "test",
+          "e2e",
+          "container",
+          "helm-lint",
+          "helm-package",
+          "terraform-fmt",
+          "terraform-init",
+          "terraform-validate",
+          "terraform-plan",
+          "terraform-apply"
+        ]
       }
     }
   },
@@ -19,24 +32,97 @@
     },
     "test": {
       "inputs": ["default", "^production", "{workspaceRoot}/jest.preset.js"]
+    },
+    "version": {
+      "dependsOn": ["build"]
+    },
+    "container": {
+      "dependsOn": ["build"],
+      "inputs": ["container"]
+    },
+    "helm-lint": {
+      "inputs": ["helm"]
+    },
+    "helm-package": {
+      "inputs": ["helm"],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/build/helm/*.tgz"]
+    },
+    "helm-push": {
+      "dependsOn": ["helm-package"],
+      "inputs": ["helm"]
+    },
+    "terraform-fmt": {
+      "inputs": ["terraform"]
+    },
+    "terraform-init": {
+      "inputs": ["terraform"],
+      "outputs": [
+        "{projectRoot}/build/terraform/.terraform",
+        "{projectRoot}/build/terraform/.terraform.lock.hcl"
+      ]
+    },
+    "terraform-validate": {
+      "dependsOn": ["terraform-init"],
+      "inputs": ["terraform"]
+    },
+    "terraform-plan": {
+      "inputs": ["terraform"],
+      "outputs": ["{projectRoot}/build/terraform/*.tfplan"]
+    },
+    "terraform-apply": {
+      "inputs": ["terraform"]
     }
   },
   "namedInputs": {
-    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "default": [
+      "{projectRoot}/**/*",
+      "sharedGlobals",
+      "!{projectRoot}/Dockerfile",
+      "!{projectRoot}/Chart.yaml",
+      "!{projectRoot}/values.yaml",
+      "!{projectRoot}/charts/**/*",
+      "!{projectRoot}/templates/**/*"
+    ],
     "production": [
       "default",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
       "!{projectRoot}/tsconfig.spec.json",
       "!{projectRoot}/jest.config.[jt]s"
     ],
-    "sharedGlobals": ["{workspaceRoot}/babel.config.json"]
+    "sharedGlobals": ["{workspaceRoot}/babel.config.json"],
+    "container": ["{projectRoot}/Dockerfile"],
+    "helm": ["{projectRoot}/build/helm/**/*"],
+    "terraform": [
+      "{projectRoot}/build/terraform/*.tf",
+      "{projectRoot}/build/terraform/*.tfvars",
+      "{projectRoot}/build/terraform/.terraform.lock.hcl"
+    ]
   },
   "stacks": {
+    "business": {
+      "company": "amido",
+      "domain": "stacks",
+      "component": "core"
+    },
+    "domain": {
+      "internal": "nonprod.amidostacks.com",
+      "external": "prod.amidostacks.com"
+    },
     "cloud": {
       "platform": "azure",
-      "region": "euw"
+      "region": "euw",
+      "group": "amido-stacks-nonprod-euw-core"
     },
-    "pipeline": "azdo"
+    "pipeline": "azdo",
+    "terraform": {
+      "group": "Stacks-Ancillary-Resources",
+      "storage": "amidostackstfstate",
+      "container": "tfstate"
+    },
+    "vcs": {
+      "type": "github",
+      "url": "https://github.com/amido/e2e-nx-playwright-test"
+    }
   },
   "generators": {
     "@nrwl/react": {
@@ -48,6 +134,11 @@
       "application": {
         "style": "css",
         "linter": "eslint"
+      }
+    },
+    "@ensono-stacks/workspace": {
+      "init": {
+        "pipelineRunner": "taskctl"
       }
     }
   }

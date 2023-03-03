@@ -2,3 +2,6 @@
 
 /dist
 /coverage
+
+# helm yaml
+apps/next-app/build/helm/**/*.yaml

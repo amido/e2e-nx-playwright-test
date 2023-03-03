@@ -70,6 +70,254 @@
       "options": {
         "lintFilePatterns": ["apps/next-app/**/*.{ts,tsx,js,jsx}"]
       }
+    },
+    "container": {
+      "executor": "@nx-tools/nx-container:build",
+      "options": {
+        "engine": "docker",
+        "load": true,
+        "platforms": ["linux/amd64"],
+        "metadata": {
+          "images": ["core/next-app"],
+          "tags": []
+        }
+      },
+      "configurations": {
+        "nonprod": {
+          "load": false,
+          "push": true,
+          "metadata": {
+            "tags": [
+              "amidostacksnonprodeuwcore.azurecr.io/core/next-app:latest",
+              "amidostacksnonprodeuwcore.azurecr.io/core/next-app:${version}"
+            ]
+          },
+          "tags": [
+            "amidostacksnonprodeuwcore.azurecr.io/core/next-app:latest",
+            "amidostacksnonprodeuwcore.azurecr.io/core/next-app:${version}"
+          ]
+        },
+        "prod": {
+          "load": false,
+          "push": true,
+          "metadata": {
+            "tags": [
+              "amidostacksprodeuwcore.azurecr.io/core/next-app:latest",
+              "amidostacksprodeuwcore.azurecr.io/core/next-app:${version}"
+            ]
+          },
+          "tags": [
+            "amidostacksprodeuwcore.azurecr.io/core/next-app:latest",
+            "amidostacksprodeuwcore.azurecr.io/core/next-app:${version}"
+          ]
+        }
+      }
+    },
+    "version": {
+      "executor": "@jscutlery/semver:version",
+      "options": {
+        "preset": "conventional",
+        "trackDeps": true,
+        "skipCommit": true,
+        "dryRun": true,
+        "skipRootChangelog": true,
+        "skipProjectChangelog": true
+      },
+      "configurations": {
+        "nonprod": {
+          "dryRun": false,
+          "noVerify": true,
+          "push": true,
+          "preid": "nonprod",
+          "releaseAs": "prerelease",
+          "postTargets": [
+            "next-app:container:nonprod",
+            "next-app:helm-package",
+            "next-app:helm-push",
+            "next-app:github"
+          ]
+        },
+        "prod": {
+          "dryRun": false,
+          "noVerify": true,
+          "push": true,
+          "postTargets": [
+            "next-app:container:prod",
+            "next-app:helm-package",
+            "next-app:helm-push:prod",
+            "next-app:github"
+          ]
+        }
+      }
+    },
+    "helm-upgrade": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "helm upgrade --devel --create-namespace --install next-app oci://amidostacksnonprodeuwcore.azurecr.io/helm/next-app -n core --atomic --wait --kube-context amido-stacks-nonprod-euw-core-admin --set serviceAccount.annotations.\"azure\\.workload\\.identity/client-id\"=\"{args.clientid}\" --set serviceAccount.annotations.\"azure\\.workload\\.identity/tenant-id\"=\"{args.tenantid}\"",
+            "forwardAllArgs": false
+          }
+        ],
+        "cwd": "apps/next-app/build/terraform"
+      },
+      "configurations": {
+        "prod": {
+          "commands": [
+            {
+              "command": "helm upgrade --create-namespace --install --values ../helm/values-prod.yaml next-app oci://amidostacksprodeuwcore.azurecr.io/helm/next-app -n core --atomic --wait --kube-context amido-stacks-prod-euw-core-admin --set serviceAccount.annotations.\"azure\\.workload\\.identity/client-id\"=\"{args.clientid}\" --set serviceAccount.annotations.\"azure\\.workload\\.identity/tenant-id\"=\"{args.tenantid}\"",
+              "forwardAllArgs": false
+            }
+          ]
+        }
+      }
+    },
+    "helm-lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "helm lint",
+            "forwardAllArgs": false
+          }
+        ],
+        "cwd": "apps/next-app/build/helm"
+      }
+    },
+    "helm-test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "helm test next-app",
+            "forwardAllArgs": false
+          }
+        ]
+      }
+    },
+    "helm-package": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "helm package . --version ${version} --app-version ${version} -u -d ../../../../dist/apps/next-app/build/helm",
+            "forwardAllArgs": false
+          }
+        ],
+        "cwd": "apps/next-app/build/helm"
+      }
+    },
+    "helm-push": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "helm push next-app*.tgz oci://amidostacksnonprodeuwcore.azurecr.io/helm",
+            "forwardAllArgs": false
+          }
+        ],
+        "cwd": "dist/apps/next-app/build/helm"
+      },
+      "configurations": {
+        "prod": {
+          "commands": [
+            {
+              "command": "helm push next-app*.tgz oci://amidostacksprodeuwcore.azurecr.io/helm",
+              "forwardAllArgs": false
+            }
+          ]
+        }
+      }
+    },
+    "github": {
+      "executor": "@jscutlery/semver:github",
+      "options": {
+        "tag": "${tag}",
+        "notes": "${notes}"
+      }
+    },
+    "terraform-fmt": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "terraform fmt -check -diff",
+            "forwardAllArgs": false
+          }
+        ],
+        "cwd": "apps/next-app/build/terraform",
+        "parallel": false
+      }
+    },
+    "terraform-init": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "terraform init -lock-timeout=60s -input=false -backend-config=\"resource_group_name={args.rg}\" -backend-config=\"storage_account_name={args.sa}\" -backend-config=\"container_name={args.container}\" -backend-config=\"key={args.key}\"",
+            "forwardAllArgs": false
+          }
+        ],
+        "args": "--rg=Stacks-Ancillary-Resources --sa=amidostackstfstate --container=tfstate --key=next-app:nonprod",
+        "cwd": "apps/next-app/build/terraform",
+        "parallel": false
+      },
+      "configurations": {
+        "prod": {
+          "args": "--rg=Stacks-Ancillary-Resources --sa=amidostackstfstate --container=tfstate --key=next-app:prod"
+        }
+      }
+    },
+    "terraform-validate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "terraform validate",
+            "forwardAllArgs": false
+          }
+        ],
+        "cwd": "apps/next-app/build/terraform",
+        "parallel": false
+      }
+    },
+    "terraform-plan": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "terraform validate",
+            "forwardAllArgs": false
+          },
+          {
+            "command": "terraform plan -input=false -lock-timeout=60s {args.terraform} -out=next-app.tfplan",
+            "forwardAllArgs": false
+          }
+        ],
+        "args": "--terraform=-var-file=nonprod.tfvars",
+        "cwd": "apps/next-app/build/terraform",
+        "parallel": false
+      },
+      "configurations": {
+        "prod": {
+          "args": "--terraform=-var-file=prod.tfvars"
+        }
+      }
+    },
+    "terraform-apply": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "terraform apply -auto-approve -input=false next-app.tfplan",
+            "forwardAllArgs": false
+          }
+        ],
+        "cwd": "apps/next-app/build/terraform"
+      },
+      "configurations": {
+        "prod": {}
+      }
     }
   },
   "tags": []

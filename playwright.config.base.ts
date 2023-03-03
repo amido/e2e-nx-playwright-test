@@ -4,9 +4,14 @@ const appName = process.env.NX_TASK_TARGET_PROJECT || 'next-app';
 const outputFolderForProject = process.env.CI
   ? `../../test-results/${appName}`
   : 'test-results';
+const appName = process.env.NX_TASK_TARGET_PROJECT || 'next-app';
+const outputFolderForProject = process.env.CI
+  ? `../../test-results/${appName}`
+  : 'test-results';
 const baseURL = process.env.BASE_URL || 'http://localhost:4200/';
 
 export const baseConfig: PlaywrightTestConfig = {
+  outputDir: outputFolderForProject,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : undefined,

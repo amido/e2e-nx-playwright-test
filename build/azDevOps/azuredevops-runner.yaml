@@ -1,0 +1,34 @@
+name: '$(Build.SourceBranchName)-init'
+
+pr:
+  - main
+
+trigger:
+  branches:
+    include:
+      - 'main'
+  paths:
+    include:
+      - '*'
+
+variables:
+  - template: azuredevops-vars.yaml
+  - group: amido-stacks-core-common
+  - name: DebugPreference
+    value: 'Continue'
+  - ${{ if ne(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+      - group: amido-stacks-core-nonprod
+  - ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+      - group: amido-stacks-core-prod
+
+# Configure the stages
+stages:
+  - ${{ if ne(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+      - template: azuredevops-stages.yaml
+  - ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+      - template: azuredevops-stages.yaml
+        parameters:
+          aksResourceGroup: amido-stacks-prod-euw-core
+          aksName: amido-stacks-prod-euw-core
+          containerRegistry: amidostacksprodeuwcore.azurecr.io
+          environment: prod
