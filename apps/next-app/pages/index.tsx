@@ -73,7 +73,7 @@ export function Index() {
                 </svg>
                 <span>
                   Documentation
-                  <span> Everything is in there </span>
+                  <span> Everything is in there, trigger </span>
                 </span>
                 <svg
                   fill="none"

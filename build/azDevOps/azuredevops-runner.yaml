@@ -1,12 +1,12 @@
 name: '$(Build.SourceBranchName)-init'
 
 pr:
-  - main
+  - master
 
 trigger:
   branches:
     include:
-      - 'main'
+      - 'master'
   paths:
     include:
       - '*'

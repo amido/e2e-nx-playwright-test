@@ -1,0 +1,27 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('Native @visual-regression', () => {
+  test.beforeEach(async ({ page }) => {
+    // Wait for network and body to be visible to ensure app is loaded
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.waitForSelector('body', { state: 'visible' });
+  });
+
+  test('main page to have no visual regressions', async ({ page }) => {
+    const screenshot = await page.screenshot({ fullPage: true });
+    await expect(screenshot).toMatchSnapshot('main-page.png');
+  });
+
+  test('Expanded information blocks have no visual regressions', async ({
+    page,
+  }) => {
+    // eslint-disable-next-line no-restricted-syntax
+    for (const information of await page
+      .locator('#commands >> details')
+      .elementHandles()) {
+      /* eslint-disable no-await-in-loop */
+      await information.click();
+    }
+    await expect(page.locator('#commands')).toHaveScreenshot('info-blocks.png');
+  });
+});
